@@ -299,24 +299,25 @@ void drawPage0Static() {
     
     tft.setTextSize(1);
     tft.setCursor(265, 100);
-    tft.print(F("SYSTEM DISK USAGE"));
-    tft.setCursor(265, 190);
+    tft.print(F("STORAGE DISK"));
+    tft.setCursor(265, 185);
     tft.print(F("SYSTEM UPTIME"));
 }
 
 void updatePage0Data() {
-    char buf[20];
+    char buf[24];
     
-    tft.fillRect(30, 95, 185, 32, COLOR_BG);
-    tft.fillRect(30, 220, 185, 32, COLOR_BG);
-    tft.fillRect(265, 115, 185, 24, COLOR_BG);
-    tft.fillRect(265, 210, 185, 20, COLOR_BG);
+    // Clear all dynamic areas with generous padding
+    tft.fillRect(30, 95, 185, 38, COLOR_BG);   // CPU % + temp
+    tft.fillRect(30, 220, 185, 38, COLOR_BG);  // RAM %
+    tft.fillRect(265, 110, 185, 70, COLOR_BG); // Disk label + % + bar area
+    tft.fillRect(265, 195, 185, 30, COLOR_BG); // Uptime value
     
     // 1. CPU
     tft.setTextSize(4);
     tft.setTextColor(COLOR_CYAN, COLOR_BG);
     tft.setCursor(30, 95);
-    snprintf(buf, sizeof(buf), "%d%%", cpuUsage);
+    snprintf(buf, sizeof(buf), "%d%%  ", cpuUsage);
     tft.print(buf);
     
     tft.setTextSize(2);
@@ -342,7 +343,7 @@ void updatePage0Data() {
     tft.setTextSize(4);
     tft.setTextColor(COLOR_GREEN, COLOR_BG);
     tft.setCursor(30, 220);
-    snprintf(buf, sizeof(buf), "%3d%%", ramUsage);
+    snprintf(buf, sizeof(buf), "%3d%% ", ramUsage);
     tft.print(buf);
     
     tft.fillRect(30, 265, 180, 8, COLOR_BG);
@@ -351,28 +352,40 @@ void updatePage0Data() {
     tft.fillRect(32, 267, ramWidth, 4, COLOR_GREEN);
     
     // 3. Storage Metric
-    int disk1Usage = (strcmp(ssdName, "None") != 0) ? ssdUsage : hddList[0].usage;
-    uint16_t disk1Color = (strcmp(ssdName, "None") != 0) ? COLOR_CYAN : COLOR_YELLOW;
+    bool hasSsd = (strcmp(ssdName, "None") != 0);
+    const char* diskName = hasSsd ? ssdName : (strcmp(hddList[0].name, "None") != 0 ? hddList[0].name : "N/A");
+    const char* diskSize = hasSsd ? ssdSize : hddList[0].size;
+    int disk1Usage = hasSsd ? ssdUsage : hddList[0].usage;
+    uint16_t disk1Color = hasSsd ? COLOR_CYAN : COLOR_YELLOW;
     
+    // Sub-label: drive name + size
+    tft.setTextSize(1);
+    tft.setTextColor(disk1Color, COLOR_BG);
+    tft.setCursor(265, 110);
+    snprintf(buf, sizeof(buf), "%-18s", diskName);
+    tft.print(buf);
+    
+    // Disk usage %
     tft.setTextSize(3);
     tft.setTextColor(disk1Color, COLOR_BG);
-    tft.setCursor(265, 115);
+    tft.setCursor(265, 120);
     if (disk1Usage >= 0) {
-        snprintf(buf, sizeof(buf), "%d%% Used", disk1Usage);
+        snprintf(buf, sizeof(buf), "%d%% Used  ", disk1Usage);
     } else {
-        snprintf(buf, sizeof(buf), "Unused  ");
+        snprintf(buf, sizeof(buf), "Unused    ");
     }
     tft.print(buf);
     
-    tft.fillRect(265, 150, 180, 8, COLOR_BG);
-    tft.drawRect(265, 150, 180, 8, COLOR_BORDER);
+    // Progress bar
+    tft.fillRect(265, 158, 180, 8, COLOR_BG);
+    tft.drawRect(265, 158, 180, 8, COLOR_BORDER);
     int diskWidth = (disk1Usage >= 0 ? disk1Usage : 0) * 176 / 100;
-    tft.fillRect(267, 152, diskWidth, 4, disk1Color);
+    tft.fillRect(267, 160, diskWidth, 4, disk1Color);
     
     // 4. Uptime
     tft.setTextSize(2);
     tft.setTextColor(COLOR_TEXT_PRI, COLOR_BG);
-    tft.setCursor(265, 210);
+    tft.setCursor(265, 200);
     snprintf(buf, sizeof(buf), "%-14s", uptimeStr);
     tft.print(buf);
 }
