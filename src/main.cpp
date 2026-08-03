@@ -576,16 +576,10 @@ void updatePage2Data() {
     snprintf(buf, sizeof(buf), "| %2d Off", ctStopped);
     tft.print(buf);
     
-    // 3. Docker Services
+    // 3. Docker Services (Only Active count displayed)
     tft.setTextColor(COLOR_GREEN, COLOR_BG);
     tft.setCursor(30, 232);
-    snprintf(buf, sizeof(buf), "%2dA", docRunning);
-    tft.print(buf);
-    
-    if (docStopped > 0) tft.setTextColor(COLOR_ORANGE, COLOR_BG);
-    else tft.setTextColor(COLOR_TEXT_SEC, COLOR_BG);
-    tft.setCursor(120, 232);
-    snprintf(buf, sizeof(buf), "| %2d Off", docStopped);
+    snprintf(buf, sizeof(buf), "%2d Active", docRunning);
     tft.print(buf);
     
     // 4. Hypervisor status
@@ -611,7 +605,7 @@ void updatePage2Data() {
     
     // 6. Total Summary
     int totalRun = vmRunning + ctRunning + docRunning;
-    int totalStop = vmStopped + ctStopped + docStopped;
+    int totalStop = vmStopped + ctStopped;
     
     tft.setTextSize(3);
     tft.setTextColor(COLOR_GREEN, COLOR_BG);
