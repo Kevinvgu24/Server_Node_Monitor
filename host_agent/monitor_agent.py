@@ -86,12 +86,12 @@ def get_ram_usage():
         print(f"Error reading RAM: {e}")
     return 0
 
-# 3. Disk Temperature Detection (HWMON / smartctl / hddtemp)
+# 3. Disk Temperature Detection (sysfs hwmon / smartctl / hddtemp)
 def get_disk_temp(dev_name):
     if not dev_name or dev_name == 'None':
         return -1
         
-    # Method 1: Check sysfs hwmon directly linked to device
+    # Method 1: Check sysfs hwmon directly linked to block device
     try:
         sys_hwmon = f"/sys/block/{dev_name}/device/hwmon"
         if os.path.exists(sys_hwmon):
@@ -105,44 +105,25 @@ def get_disk_temp(dev_name):
     except:
         pass
 
-    # Method 2: Check /sys/class/hwmon for drivetemp or nvme matching device path
-    try:
-        hwmon_dir = "/sys/class/hwmon"
-        if os.path.exists(hwmon_dir):
-            for hwm in os.listdir(hwmon_dir):
-                hwm_path = os.path.join(hwmon_dir, hwm)
-                device_link = os.path.join(hwm_path, "device")
-                if os.path.exists(device_link):
-                    real_path = os.path.realpath(device_link)
-                    if dev_name in real_path:
-                        tf = os.path.join(hwm_path, "temp1_input")
-                        if os.path.exists(tf):
-                            with open(tf, 'r') as f:
-                                val = int(f.read().strip())
-                            if val > 0:
-                                return int(val / 1000) if val > 1000 else int(val)
-    except:
-        pass
-
-    # Method 3: Fallback smartctl JSON
+    # Method 2: Check smartctl JSON for exact /dev/{dev_name}
     try:
         res = subprocess.run(
             ['smartctl', '-A', f'/dev/{dev_name}', '--json'],
-            capture_output=True, text=True
+            capture_output=True, text=True, timeout=2
         )
         if res.returncode == 0 or res.stdout:
             data = json.loads(res.stdout)
             temp = data.get('temperature', {}).get('current')
-            if temp is not None:
+            if temp is not None and int(temp) > 0:
                 return int(temp)
     except:
         pass
 
-    # Method 4: Fallback hddtemp
+    # Method 3: Fallback hddtemp
     try:
         res = subprocess.run(
             ['hddtemp', '-n', f'/dev/{dev_name}'],
-            capture_output=True, text=True
+            capture_output=True, text=True, timeout=2
         )
         if res.returncode == 0:
             val = int(res.stdout.strip())
@@ -152,6 +133,18 @@ def get_disk_temp(dev_name):
         pass
 
     return -1
+
+# Helper to check if a block device is a physical disk
+def is_physical_disk(name):
+    if not name:
+        return False
+    # Filter out virtual / system block devices (ZFS zd, loop, cdrom sr, ram, dm, nbd, rbd)
+    if any(name.startswith(prefix) for prefix in ['zd', 'loop', 'sr', 'ram', 'dm-', 'nbd', 'rbd']):
+        return False
+    # Allow physical drive prefixes (sd, nvme, hd, vd)
+    if any(name.startswith(prefix) for prefix in ['sd', 'nvme', 'hd', 'vd']):
+        return True
+    return False
 
 # 4. Disk List and Status (1 SSD + up to 6 HDDs)
 def get_disks_info():
@@ -199,43 +192,57 @@ def get_disks_info():
             capture_output=True, text=True, check=True
         )
         data = json.loads(result.stdout)
-        ssd_found = False
         
+        physical_disks = []
         for dev in (data.get('blockdevices') or []):
-            if dev.get('type') == 'disk':
-                name = dev.get('name', '')
-                size = dev.get('size', '0G')
-                rota_val = dev.get('rota')
-                is_ssd = (str(rota_val).lower() in ['0', 'false']) if rota_val is not None else False
+            name = dev.get('name', '')
+            if dev.get('type') == 'disk' and is_physical_disk(name):
+                physical_disks.append(dev)
                 
-                usage = find_mount_in_device(dev)
-                if usage == -1 and (name in ['sda', 'nvme0n1', 'vda'] or (not ssd_found and len(hdds) == 0)):
-                    usage = get_path_usage('/')
+        # Sort physical disks by name (nvme0n1, sda, sdb, sdc...)
+        physical_disks.sort(key=lambda d: d.get('name', ''))
+        
+        ssd_found = False
+        raw_hdds = []
+        
+        for dev in physical_disks:
+            name = dev.get('name', '')
+            size = dev.get('size', '0G')
+            rota_val = dev.get('rota')
+            is_ssd = (str(rota_val).lower() in ['0', 'false']) if rota_val is not None else False
+            if 'nvme' in name:
+                is_ssd = True
                 
-                size_clean = size.replace(' ', '').replace('B', '')
-                if '.' in size_clean:
-                    parts = size_clean.split('.')
-                    unit = "".join([c for c in parts[1] if c.isalpha()])
-                    size_clean = parts[0] + unit
+            usage = find_mount_in_device(dev)
+            if usage == -1 and (name in ['sda', 'nvme0n1', 'vda'] or (not ssd_found and len(raw_hdds) == 0)):
+                usage = get_path_usage('/')
+            
+            size_clean = size.replace(' ', '').replace('B', '')
+            if '.' in size_clean:
+                parts = size_clean.split('.')
+                unit = "".join([c for c in parts[1] if c.isalpha()])
+                size_clean = parts[0] + unit
+            
+            temp = get_disk_temp(name)
+            
+            disk_info = {
+                'name': name,
+                'type': 'SSD' if is_ssd else 'HDD',
+                'size': size_clean,
+                'usage': usage,
+                'temp': temp
+            }
+            
+            if is_ssd and not ssd_found:
+                ssd = disk_info
+                ssd_found = True
+            else:
+                raw_hdds.append(disk_info)
                 
-                temp = get_disk_temp(name)
-                
-                disk_info = {
-                    'name': name,
-                    'type': 'SSD' if is_ssd else 'HDD',
-                    'size': size_clean,
-                    'usage': usage,
-                    'temp': temp
-                }
-                
-                if is_ssd and not ssd_found:
-                    ssd = disk_info
-                    ssd_found = True
-                elif not is_ssd and len(hdds) < 6:
-                    hdds.append(disk_info)
-                elif is_ssd and len(hdds) < 6:
-                    hdds.append(disk_info)
-                    
+        # Sort HDDs alphabetically by name (sda, sdb, sdc...)
+        raw_hdds.sort(key=lambda x: x['name'])
+        hdds = raw_hdds[:6]
+        
     except Exception as e:
         print(f"Error reading disk list: {e}")
         
