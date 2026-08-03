@@ -1,0 +1,20 @@
+# udev rule for Proxmox TFT Server Monitor
+# This rule detects the Arduino device and creates a stable symlink at /dev/arduino_monitor.
+# It also flags systemd to manage the pve-monitor service accordingly.
+
+# Arduino Uno / Mega (Original)
+SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0043", SYMLINK+="arduino_monitor", TAG+="systemd"
+SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0042", SYMLINK+="arduino_monitor", TAG+="systemd"
+
+# CH340 USB-to-Serial (Matches your CH340 Clone: ID 1a86:7523)
+SUBSYSTEM=="tty", KERNEL=="ttyUSB[0-9]*", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", SYMLINK+="arduino_monitor", TAG+="systemd"
+SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", SYMLINK+="arduino_monitor", TAG+="systemd"
+
+# CP210x USB-to-Serial
+SUBSYSTEM=="tty", KERNEL=="ttyUSB[0-9]*", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", SYMLINK+="arduino_monitor", TAG+="systemd"
+
+# FTDI FT232 USB-to-Serial
+SUBSYSTEM=="tty", KERNEL=="ttyUSB[0-9]*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="arduino_monitor", TAG+="systemd"
+
+# PL2303 USB-to-Serial
+SUBSYSTEM=="tty", KERNEL=="ttyUSB[0-9]*", ATTRS{idVendor}=="067b", ATTRS{idProduct}=="2303", SYMLINK+="arduino_monitor", TAG+="systemd"

@@ -1,0 +1,17 @@
+[Unit]
+Description=Proxmox TFT Monitor Data Agent
+# Bind to the udev device so this service only runs when the USB is plugged in
+BindsTo=dev-arduino_monitor.device
+After=dev-arduino_monitor.device
+
+[Service]
+Type=simple
+# Ensure the path below matches the absolute path to your monitor_agent.py on the server
+ExecStart=/usr/bin/python3 /root/monitor/monitor_agent.py
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+# Automatically start this service when the USB device is plugged in (and udev creates the device unit)
+WantedBy=dev-arduino_monitor.device
