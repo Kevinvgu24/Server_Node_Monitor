@@ -20,19 +20,28 @@ except ImportError:
 
 # Helper to find Arduino Serial Port
 def find_arduino_port():
-    # Prioritize custom udev symlink if it exists
+    # 1. Prioritize custom udev symlink if it exists
     if os.path.exists("/dev/arduino_monitor"):
         return "/dev/arduino_monitor"
         
+    # 2. Direct check for USB serial ports in /dev (/dev/ttyACM* or /dev/ttyUSB*)
+    for candidate in ["/dev/ttyACM0", "/dev/ttyUSB0", "/dev/ttyACM1", "/dev/ttyUSB1"]:
+        if os.path.exists(candidate):
+            return candidate
+            
+    # 3. Search list_ports specifically for ttyACM/ttyUSB or USB Serial keywords
     ports = serial.tools.list_ports.comports()
     for port in ports:
+        dev = port.device
+        if "ttyACM" in dev or "ttyUSB" in dev:
+            return dev
+            
+    for port in ports:
+        dev = port.device.lower()
         desc = port.description.lower()
-        # Common keywords for Arduino Uno or USB Serial bridges
-        if any(kw in desc for kw in ["arduino", "ch340", "cp210", "ftdi", "usb serial", "usb-to-uart"]):
+        if "ttys" not in dev and any(kw in desc for kw in ["arduino", "ch340", "cp210", "ftdi", "usb serial", "usb-to-uart"]):
             return port.device
-    # Fallback to first available port if found
-    if ports:
-        return ports[0].device
+
     return None
 
 # 1. CPU Usage (from /proc/stat)
