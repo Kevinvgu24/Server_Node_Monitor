@@ -222,6 +222,10 @@ void parsePacket(char* data) {
                 } else if (fieldIdx == 36) {
                     docStopped = atoi(token);
                 } else if (fieldIdx == 37) {
+                    int len = strlen(token);
+                    while (len > 0 && (token[len-1] == '\r' || token[len-1] == '\n' || token[len-1] == ' ')) {
+                        token[--len] = '\0';
+                    }
                     strncpy(uptimeStr, token, sizeof(uptimeStr) - 1);
                     uptimeStr[sizeof(uptimeStr) - 1] = '\0';
                 }
@@ -301,12 +305,12 @@ void drawPage0Static() {
 }
 
 void updatePage0Data() {
-    char buf[16];
+    char buf[20];
     
     tft.fillRect(30, 95, 185, 32, COLOR_BG);
     tft.fillRect(30, 220, 185, 32, COLOR_BG);
     tft.fillRect(265, 115, 185, 24, COLOR_BG);
-    tft.fillRect(265, 210, 185, 16, COLOR_BG);
+    tft.fillRect(265, 210, 185, 20, COLOR_BG);
     
     // 1. CPU
     tft.setTextSize(4);
@@ -369,7 +373,7 @@ void updatePage0Data() {
     tft.setTextSize(2);
     tft.setTextColor(COLOR_TEXT_PRI, COLOR_BG);
     tft.setCursor(265, 210);
-    snprintf(buf, sizeof(buf), "%-10s", uptimeStr);
+    snprintf(buf, sizeof(buf), "%-14s", uptimeStr);
     tft.print(buf);
 }
 
