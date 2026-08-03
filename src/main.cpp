@@ -555,31 +555,35 @@ void updatePage2Data() {
     tft.setTextSize(2);
     tft.setTextColor(COLOR_GREEN, COLOR_BG);
     tft.setCursor(30, 112);
-    snprintf(buf, sizeof(buf), "%2dA", vmRunning);
+    snprintf(buf, sizeof(buf), "%d Active", vmRunning);
     tft.print(buf);
     
-    if (vmStopped > 0) tft.setTextColor(COLOR_ORANGE, COLOR_BG);
-    else tft.setTextColor(COLOR_TEXT_SEC, COLOR_BG);
-    tft.setCursor(120, 112);
-    snprintf(buf, sizeof(buf), "| %2d Off", vmStopped);
-    tft.print(buf);
+    if (vmStopped > 0) {
+        tft.setTextColor(COLOR_ORANGE, COLOR_BG);
+        tft.setCursor(140, 112);
+        snprintf(buf, sizeof(buf), "| %d Off", vmStopped);
+        tft.print(buf);
+    }
     
     // 2. LXC CTs
+    tft.setTextSize(2);
     tft.setTextColor(COLOR_GREEN, COLOR_BG);
     tft.setCursor(30, 172);
-    snprintf(buf, sizeof(buf), "%2dA", ctRunning);
+    snprintf(buf, sizeof(buf), "%d Active", ctRunning);
     tft.print(buf);
     
-    if (ctStopped > 0) tft.setTextColor(COLOR_ORANGE, COLOR_BG);
-    else tft.setTextColor(COLOR_TEXT_SEC, COLOR_BG);
-    tft.setCursor(120, 172);
-    snprintf(buf, sizeof(buf), "| %2d Off", ctStopped);
-    tft.print(buf);
+    if (ctStopped > 0) {
+        tft.setTextColor(COLOR_ORANGE, COLOR_BG);
+        tft.setCursor(140, 172);
+        snprintf(buf, sizeof(buf), "| %d Off", ctStopped);
+        tft.print(buf);
+    }
     
     // 3. Docker Services (Only Active count displayed)
+    tft.setTextSize(2);
     tft.setTextColor(COLOR_GREEN, COLOR_BG);
     tft.setCursor(30, 232);
-    snprintf(buf, sizeof(buf), "%2d Active", docRunning);
+    snprintf(buf, sizeof(buf), "%d Active", docRunning);
     tft.print(buf);
     
     // 4. Hypervisor status
@@ -610,13 +614,13 @@ void updatePage2Data() {
     tft.setTextSize(3);
     tft.setTextColor(COLOR_GREEN, COLOR_BG);
     tft.setCursor(260, 212);
-    snprintf(buf, sizeof(buf), "%2d Active", totalRun);
+    snprintf(buf, sizeof(buf), "%d Active", totalRun);
     tft.print(buf);
     
     tft.setTextSize(2);
     if (totalStop > 0) tft.setTextColor(COLOR_ORANGE, COLOR_BG);
     else tft.setTextColor(COLOR_TEXT_SEC, COLOR_BG);
     tft.setCursor(260, 245);
-    snprintf(buf, sizeof(buf), "%2d Stopped", totalStop);
+    snprintf(buf, sizeof(buf), "%d Stopped", totalStop);
     tft.print(buf);
 }
